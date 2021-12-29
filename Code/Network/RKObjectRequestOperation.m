@@ -408,7 +408,7 @@ static NSString *RKStringDescribingURLResponseWithData(NSURLResponse *response, 
     if (!block) {
         _willMapDeserializedResponseBlock = nil;
     } else {
-        __unsafe_unretained id weakSelf = self;
+        __weak id weakSelf = self;
         _willMapDeserializedResponseBlock = ^id (id deserializedResponse) {
             id result = block(deserializedResponse);
             [weakSelf setWillMapDeserializedResponseBlock:nil];
