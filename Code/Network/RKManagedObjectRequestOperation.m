@@ -794,14 +794,18 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
 {
     __block NSError *localError = nil;
     while (contextToSave) {
-        __block BOOL success;
+        __block BOOL success = YES;
         [contextToSave performBlockAndWait:^{
-            if (! [self isCancelled]) {
-                success = [contextToSave save:&localError];
-                if (! success && localError == nil) RKLogWarning(@"Saving of managed object context failed, but a `nil` value for the `error` argument was returned. This typically indicates an invalid implementation of a key-value validation method exists within your model. This violation of the API contract may result in the save operation being mis-interpretted by callers that rely on the availability of the error.");
-            } else {
-                // We have been cancelled while the save is in progress -- bail
-                success = NO;
+            if ([contextToSave hasChanges]) {
+                if (! [self isCancelled]) {
+                    success = [contextToSave save:&localError];
+                    if (! success && localError == nil) {
+                        RKLogWarning(@"Saving of managed object context failed, but a `nil` value for the `error` argument was returned. This typically indicates an invalid implementation of a key-value validation method exists within your model. This violation of the API contract may result in the save operation being mis-interpretted by callers that rely on the availability of the error.");
+                    }
+                } else {
+                    // We have been cancelled while the save is in progress -- bail
+                    success = NO;
+                }
             }
         }];
 
@@ -830,13 +834,20 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
     if (self.savesToPersistentStore) {
         success = [self saveContextToPersistentStore:context failedContext:&failedContext error:&localError];
     } else {
-        [context performBlockAndWait:^{
-            success = ([self isCancelled]) ? NO : [context save:&localError];
-            if (!success) {
-                failedContext = context;
-            }
-        }];
+        if ([self isCancelled]) {
+            success = NO;
+        } else {
+            [context performBlockAndWait:^{
+                if ([context hasChanges]) {
+                    success = [context save:&localError];
+                    if (!success) {
+                        failedContext = context;
+                    }
+                }
+            }];
+        }
     }
+    
     if (success) {
         if ([self.targetObject isKindOfClass:[NSManagedObject class]]) {
             [self.managedObjectContext performBlock:^{
