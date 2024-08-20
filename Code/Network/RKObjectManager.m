@@ -600,15 +600,22 @@ static NSString *RKMIMETypeFromAFHTTPClientParameterEncoding(AFRKHTTPClientParam
 
 #ifdef RKCoreDataIncluded
 - (RKManagedObjectRequestOperation *)managedObjectRequestOperationWithRequest:(NSURLRequest *)request
+                                               shouldSaveContextBeforeAPICall:(BOOL)shouldSave
                                                           managedObjectContext:(NSManagedObjectContext *)managedObjectContext
                                                                       success:(void (^)(RKObjectRequestOperation *operation, RKMappingResult *mappingResult))success
                                                                       failure:(void (^)(RKObjectRequestOperation *operation, NSError *error))failure
 {
-    return [self managedObjectRequestOperationWithRequest:request responseDescriptors:self.responseDescriptors managedObjectContext:managedObjectContext success:success failure:failure];
+    return [self managedObjectRequestOperationWithRequest:request
+                                      responseDescriptors:self.responseDescriptors
+                           shouldSaveContextBeforeAPICall:shouldSave
+                                     managedObjectContext:managedObjectContext
+                                                  success:success
+                                                  failure:failure];
 }
 
 - (RKManagedObjectRequestOperation *)managedObjectRequestOperationWithRequest:(NSURLRequest *)request
                                                           responseDescriptors:(NSArray *)responseDescriptors
+                                               shouldSaveContextBeforeAPICall:(BOOL)shouldSave
                                                          managedObjectContext:(NSManagedObjectContext *)managedObjectContext
                                                                       success:(void (^)(RKObjectRequestOperation *operation, RKMappingResult *mappingResult))success
                                                                       failure:(void (^)(RKObjectRequestOperation *operation, NSError *error))failure
@@ -619,6 +626,9 @@ static NSString *RKMIMETypeFromAFHTTPClientParameterEncoding(AFRKHTTPClientParam
     Class objectRequestOperationClass = [self requestOperationClassForRequest:request fromRegisteredClasses:self.registeredManagedObjectRequestOperationClasses] ?: [RKManagedObjectRequestOperation class];
     RKManagedObjectRequestOperation *operation = (RKManagedObjectRequestOperation *)[[objectRequestOperationClass alloc] initWithHTTPRequestOperation:HTTPRequestOperation responseDescriptors:responseDescriptors];
     [operation setCompletionBlockWithSuccess:success failure:failure];
+    
+    operation.shouldSaveContextBeforeAPICall = shouldSave;
+    
     operation.managedObjectContext = managedObjectContext ?: self.managedObjectStore.mainQueueManagedObjectContext;
     operation.managedObjectCache = self.managedObjectStore.managedObjectCache;
     operation.fetchRequestBlocks = self.fetchRequestBlocks;
@@ -659,7 +669,12 @@ static NSString *RKMIMETypeFromAFHTTPClientParameterEncoding(AFRKHTTPClientParam
     if (isManagedObjectRequestOperation && self.managedObjectStore) {
         // Construct a Core Data operation
         NSManagedObjectContext *managedObjectContext = [object respondsToSelector:@selector(managedObjectContext)] ? [object managedObjectContext] : self.managedObjectStore.mainQueueManagedObjectContext;
-        operation = [self managedObjectRequestOperationWithRequest:request responseDescriptors:matchingDescriptors managedObjectContext:managedObjectContext success:nil failure:nil];
+        operation = [self managedObjectRequestOperationWithRequest:request
+                                               responseDescriptors:matchingDescriptors
+                                    shouldSaveContextBeforeAPICall:YES
+                                              managedObjectContext:managedObjectContext
+                                                           success:nil
+                                                           failure:nil];
 
         if ([object isKindOfClass:[NSManagedObject class]]) {
             static NSPredicate *temporaryObjectsPredicate = nil;

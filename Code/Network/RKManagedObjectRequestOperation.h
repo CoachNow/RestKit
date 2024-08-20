@@ -121,7 +121,13 @@
  @see `RKManagedObjectResponseMapperOperation`
  */
 @interface RKManagedObjectRequestOperation : RKObjectRequestOperation
-
+/**
+ If `true`, the CoreData context will be saved before making an API call.
+ 
+ Disabling context saving can help avoid potential app freezes, as the context is
+ saved synchronously on the thread from which it's called, including the main thread.
+ */
+@property (nonatomic, assign) BOOL shouldSaveContextBeforeAPICall;
 ///----------------------------------------
 /// @name Configuring Core Data Integration
 ///----------------------------------------

@@ -473,6 +473,7 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
     self = [super initWithHTTPRequestOperation:requestOperation responseDescriptors:responseDescriptors];
     if (self) {
         self.savesToPersistentStore = YES;
+        self.shouldSaveContextBeforeAPICall = YES;
         self.deletesOrphanedObjects = YES;
         self.cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:requestOperation.request];
     }
@@ -513,28 +514,29 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
     _managedObjectContext = managedObjectContext;
 
     if (managedObjectContext) {
-        [managedObjectContext performBlockAndWait:^{
-            if ([managedObjectContext hasChanges]) {
-                if ([managedObjectContext.insertedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didCreateObject:)]) {
-                    for (NSManagedObject *managedObject in managedObjectContext.insertedObjects) {
-                        [self.managedObjectCache didCreateObject:managedObject];
+        if (self.shouldSaveContextBeforeAPICall) {
+            [managedObjectContext performBlockAndWait:^{
+                if ([managedObjectContext hasChanges]) {
+                    if ([managedObjectContext.insertedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didCreateObject:)]) {
+                        for (NSManagedObject *managedObject in managedObjectContext.insertedObjects) {
+                            [self.managedObjectCache didCreateObject:managedObject];
+                        }
+                    }
+                    
+                    if ([managedObjectContext.updatedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didFetchObject:)]) {
+                        for (NSManagedObject *managedObject in managedObjectContext.updatedObjects) {
+                            [self.managedObjectCache didFetchObject:managedObject];
+                        }
+                    }
+                    
+                    if ([managedObjectContext.deletedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didDeleteObject:)]) {
+                        for (NSManagedObject *managedObject in managedObjectContext.deletedObjects) {
+                            [self.managedObjectCache didDeleteObject:managedObject];
+                        }
                     }
                 }
-                
-                if ([managedObjectContext.updatedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didFetchObject:)]) {
-                    for (NSManagedObject *managedObject in managedObjectContext.updatedObjects) {
-                        [self.managedObjectCache didFetchObject:managedObject];
-                    }
-                }
-                
-                if ([managedObjectContext.deletedObjects count] && [self.managedObjectCache respondsToSelector:@selector(didDeleteObject:)]) {
-                    for (NSManagedObject *managedObject in managedObjectContext.deletedObjects) {
-                        [self.managedObjectCache didDeleteObject:managedObject];
-                    }
-                }
-            }
-        }];
-        
+            }];
+        }
         // Create a private context
         NSManagedObjectContext *privateContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
         [privateContext setParentContext:managedObjectContext];
