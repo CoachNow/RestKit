@@ -275,10 +275,13 @@
 
     __block BOOL success;
     __block NSError *localError = nil;
+    __weak typeof (self) weakSelf = self;
     [self.managedObjectContext performBlockAndWait:^{
-        success = [self.managedObjectContext save:&localError];
-        if (! success) {
-            RKLogCoreDataError(localError);
+        if ([weakSelf.managedObjectContext hasChanges]) {
+            success = [weakSelf.managedObjectContext save:&localError];
+            if (! success) {
+                RKLogCoreDataError(localError);
+            }
         }
     }];
 

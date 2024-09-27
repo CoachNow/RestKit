@@ -484,7 +484,8 @@ RKMappingResult, RKRequestDescriptor, RKResponseDescriptor;
  */
 #ifdef RKCoreDataIncluded
 - (RKManagedObjectRequestOperation *)managedObjectRequestOperationWithRequest:(NSURLRequest *)request
-                                                         managedObjectContext:(NSManagedObjectContext *)managedObjectContext
+                                               shouldSaveContextBeforeAPICall:(BOOL)shouldSave
+                                                          managedObjectContext:(NSManagedObjectContext *)managedObjectContext
                                                                       success:(void (^)(RKObjectRequestOperation *operation, RKMappingResult *mappingResult))success
                                                                       failure:(void (^)(RKObjectRequestOperation *operation, NSError *error))failure;
 #endif
