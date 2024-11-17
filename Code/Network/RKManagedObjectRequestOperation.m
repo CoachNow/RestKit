@@ -834,6 +834,9 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
     __block NSError *localError = nil;
     __block NSManagedObjectContext *failedContext = nil;
     if (self.savesToPersistentStore) {
+        [self temp_validateForInsertAndUpdate:context error:&localError];
+        [self temp_checkForFaultedOrDeletedObjects:context];
+
         success = [self saveContextToPersistentStore:context failedContext:&failedContext error:&localError];
     } else {
         if ([self isCancelled]) {
@@ -868,6 +871,31 @@ BOOL RKDoesArrayOfResponseDescriptorsContainOnlyEntityMappings(NSArray *response
     }
 
     return success;
+}
+
+- (void)temp_validateForInsertAndUpdate:(NSManagedObjectContext *)contextToSave error:(NSError **)error {
+    for (NSManagedObject *object in contextToSave.insertedObjects) {
+        NSError *validationError = nil;
+        if (![object validateForInsert:&validationError]) {
+            NSLog(@"Validation error on insert: %@", validationError);
+            //            [contextToSave deleteObject:object];
+        }
+    }
+    for (NSManagedObject *object in contextToSave.updatedObjects) {
+        NSError *validationError = nil;
+        if (![object validateForUpdate:&validationError]) {
+            NSLog(@"Validation error on update: %@", validationError);
+            //            [contextToSave rollback];
+        }
+    }
+}
+
+- (void)temp_checkForFaultedOrDeletedObjects:(NSManagedObjectContext *)contextToSave {
+    for (NSManagedObject *object in contextToSave.insertedObjects) {
+        if (object.managedObjectContext == nil || ![object isDeleted]) {
+            NSLog(@"Invalid object detected: %@", object);
+        }
+    }
 }
 
 - (BOOL)saveContext:(NSError **)error
